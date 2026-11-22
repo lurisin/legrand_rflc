@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -15,6 +17,7 @@ from homeassistant.components.light import (
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    ATTR_ICON,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
     STATE_OFF,
@@ -24,6 +27,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.legrand_rflc import light
 from custom_components.legrand_rflc.const import DOMAIN, LegrandRFLCData
 from custom_components.legrand_rflc.hub import Composer
 
@@ -58,6 +62,25 @@ async def test_switch_entity_created(
     state = hass.states.get("light.kitchen")
     assert state is not None
     assert state.state == STATE_OFF
+
+
+# ---- Icons ----
+
+
+async def test_lights_use_domain_default_icons(
+    hass: HomeAssistant, setup_lights: MockHub
+) -> None:
+    """Lights set no icon, so the light domain's on/off icons apply."""
+    icons = json.loads(
+        (Path(light.__file__).parent / "icons.json").read_text(encoding="utf-8")
+    )
+    assert "entity" not in icons
+    assert set(icons["services"]) == {"all_on", "all_off"}
+
+    for entity_id in ("light.living_room", "light.kitchen"):
+        state = hass.states.get(entity_id)
+        assert state is not None
+        assert ATTR_ICON not in state.attributes
 
 
 # ---- State updates via events ----
