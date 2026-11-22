@@ -89,6 +89,28 @@
         },
         "dimmer_failed": {
             "message": "Failed to control {entity}: {error}"
+        },
+        "command_timeout": {
+            "message": "The hub did not confirm the command for {entity} in time"
+        },
+        "no_hub_available": {
+            "message": "No Legrand LC7001 hub is connected and authenticated"
+        },
+        "ramp_all_failed": {
+            "message": "The hub at {host} rejected the command: {error}"
+        },
+        "ramp_all_timeout": {
+            "message": "The hub at {host} did not confirm the command in time"
+        }
+    },
+    "services": {
+        "all_on": {
+            "name": "All on",
+            "description": "Turns on every Legrand zone of the house at the same time. Dimmers go to 100%."
+        },
+        "all_off": {
+            "name": "All off",
+            "description": "Turns off every Legrand zone of the house at the same time."
         }
     }
 }

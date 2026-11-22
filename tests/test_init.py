@@ -13,9 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.legrand_rflc.const import DOMAIN, LegrandRFLCData
 from custom_components.legrand_rflc.hub import Authenticator
 
-from .conftest import MOCK_HOST, MOCK_MAC, MockHub
-
-INIT_PATCH = "custom_components.legrand_rflc"
+from .conftest import INIT_PATCH, MockHub, async_setup_with_hub
 
 
 async def test_setup_entry_success(
@@ -24,15 +22,7 @@ async def test_setup_entry_success(
     mock_hub: MockHub,
 ) -> None:
     """Test successful setup creates runtime data and registers device."""
-    mock_config_entry.add_to_hass(hass)
-
-    with (
-        patch(f"{INIT_PATCH}.Connector") as mock_conn_cls,
-        patch(f"{INIT_PATCH}.Hub", return_value=mock_hub),
-    ):
-        mock_conn_cls.return_value.loop = AsyncMock(return_value=MOCK_MAC)
-        await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    await async_setup_with_hub(hass, mock_config_entry, mock_hub)
 
     assert mock_config_entry.state is mock_config_entry.state  # loaded
     assert isinstance(mock_config_entry.runtime_data, LegrandRFLCData)
@@ -88,15 +78,7 @@ async def test_unload_entry(
     mock_hub: MockHub,
 ) -> None:
     """Test unloading cancels the hub and unloads platforms."""
-    mock_config_entry.add_to_hass(hass)
-
-    with (
-        patch(f"{INIT_PATCH}.Connector") as mock_conn_cls,
-        patch(f"{INIT_PATCH}.Hub", return_value=mock_hub),
-    ):
-        mock_conn_cls.return_value.loop = AsyncMock(return_value=MOCK_MAC)
-        await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    await async_setup_with_hub(hass, mock_config_entry, mock_hub)
 
     result = await hass.config_entries.async_unload(mock_config_entry.entry_id)
     assert result is True

@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 
-from .const import DOMAIN, LegrandRFLCConfigEntry
+from .const import COMMAND_TIMEOUT, DOMAIN, LegrandRFLCConfigEntry
 from .hub import Hub
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -151,6 +151,17 @@ class _Switch(LightEntity):
         self._apply_properties(message)
         self.async_write_ha_state()
 
+    async def _async_await_reply(self, result: asyncio.Future[None]) -> None:
+        """Wait for the hub's reply to a command, but not forever."""
+        try:
+            await asyncio.wait_for(result, COMMAND_TIMEOUT)
+        except TimeoutError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="command_timeout",
+                translation_placeholders={"entity": self.entity_id or ""},
+            ) from err
+
     async def _async_switch(self, power: bool) -> None:
         """Send on/off command and await hub response."""
         hub = self._hub
@@ -176,7 +187,7 @@ class _Switch(LightEntity):
         await hub.handle_send(
             handle, hub.compose_set_zone_properties(self._zid, power=power)
         )
-        await result
+        await self._async_await_reply(result)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the light."""
@@ -265,7 +276,7 @@ class _Dimmer(_Switch):
             handle,
             hub.compose_set_zone_properties(self._zid, **properties),
         )
-        await result
+        await self._async_await_reply(result)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the dimmer."""

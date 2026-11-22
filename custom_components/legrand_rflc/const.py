@@ -11,6 +11,9 @@ from .hub import Hub
 
 DOMAIN: Final = "legrand_rflc"
 
+# Seconds to wait for the hub to reply to a command.
+COMMAND_TIMEOUT: Final = 5.0
+
 
 @dataclass
 class LegrandRFLCData:

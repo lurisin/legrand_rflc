@@ -6,10 +6,10 @@
   "config_flow": true,
   "dependencies": [],
   "dhcp": [{ "hostname": "legrand lc7001" }],
-  "documentation": "https://github.com/MichaelB2018/legrand_rflc",
+  "documentation": "https://github.com/lurisin/legrand_rflc",
   "integration_type": "device",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/MichaelB2018/legrand_rflc/issues",
+  "issue_tracker": "https://github.com/lurisin/legrand_rflc/issues",
   "requirements": [],
-  "version": "1.0.3"
+  "version": "1.1.0"
 }

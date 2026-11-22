@@ -2,7 +2,8 @@
 # Original author: Ross Tyler
 # License: MIT (https://github.com/rtyle/lc7001/blob/master/LICENSE)
 # Modifications: redact key material (Keys property, challenge responses)
-#   from log output; otherwise vendored as-is to resolve PyPI install failures
+#   from log output; add compose_trigger_ramp_all;
+#   otherwise vendored as-is to resolve PyPI install failures
 
 """asyncio (aio) Legrand Adorne LC7001 Hub interface.
 
@@ -226,6 +227,16 @@ class Composer:
         return {
             self.SERVICE: self.SET_SYSTEM_PROPERTIES,
             self.PROPERTY_LIST: property_list,
+        }
+
+    def compose_trigger_ramp_all(self, power_level: int):
+        """Compose a TRIGGER_RAMP_ALL_COMMAND message.
+
+        The hub ramps every zone of the house to power_level (0-100)
+        with a single RF multicast packet."""
+        return {
+            self.SERVICE: self.TRIGGER_RAMP_ALL_COMMAND,
+            self.POWER_LEVEL: power_level,
         }
 
     @staticmethod
