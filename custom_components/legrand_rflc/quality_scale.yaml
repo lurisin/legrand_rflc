@@ -1,8 +1,8 @@
 rules:
   # Bronze
   action-setup:
-    status: exempt
-    comment: Integration has no custom actions/services.
+    status: done
+    comment: all_on and all_off are registered in async_setup.
   appropriate-polling:
     status: done
     comment: local_push IoT class; no polling.
@@ -19,8 +19,8 @@ rules:
     status: done
     comment: Hub library vendored as hub.py (MIT license, from lc7001 v1.0.5).
   docs-actions:
-    status: exempt
-    comment: Integration has no custom actions/services.
+    status: done
+    comment: all_on and all_off are described in the README.
   docs-high-level-description:
     status: done
   docs-installation-instructions:

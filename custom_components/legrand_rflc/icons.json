@@ -8,5 +8,13 @@
                 "default": "mdi:lightbulb"
             }
         }
+    },
+    "services": {
+        "all_on": {
+            "service": "mdi:lightbulb-group"
+        },
+        "all_off": {
+            "service": "mdi:lightbulb-group-off"
+        }
     }
 }

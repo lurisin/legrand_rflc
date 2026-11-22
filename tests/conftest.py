@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import copy
 from collections.abc import Mapping
 from typing import Any, Final
 from unittest.mock import AsyncMock, patch
@@ -16,8 +18,14 @@ from custom_components.legrand_rflc.hub import (
     Authenticator,
     Composer,
     Connector,
+    Hub,
     Receiver,
 )
+
+INIT_PATCH: Final = "custom_components.legrand_rflc"
+
+# Give a MockHub response attribute this value to make the hub never reply.
+NO_REPLY: Final = object()
 
 MOCK_HOST: Final = "192.168.1.100"
 MOCK_MAC: Final = "001122334455"
@@ -66,9 +74,21 @@ class MockHub:
         self._host = host
         self._connected = True
         self._authenticated = True
-        self._zones: list[dict[str, Any]] = zones or []
+        # Copied: the mock changes zone properties like the real hub does.
+        self._zones: list[dict[str, Any]] = copy.deepcopy(zones or [])
         self._handlers: dict[str, list[Any]] = {}
-        self._set_zone_response: dict[str, Any] | None = None
+        self._set_zone_response: Any = None
+        self._ramp_all_response: Any = None
+        # Every message passed to handle_send, in order.
+        self.sent: list[dict[str, Any]] = []
+        # Set once loop() has emitted its events and their handlers are done.
+        self.ready = asyncio.Event()
+
+    def __getattr__(self, name: str) -> Any:
+        """Mirror any other constant of the real Hub."""
+        if name.isupper():
+            return getattr(Hub, name)
+        raise AttributeError(name)
 
     def host(self) -> str:
         return self._host
@@ -122,10 +142,15 @@ class MockHub:
         pass
 
     async def loop(self) -> str:
+        # A real hub needs network round trips before it authenticates, so the
+        # config entry is loaded by then. Home Assistant starts tasks eagerly:
+        # yield once to get the same order of events here.
+        await asyncio.sleep(0)
         self._connected = True
         self._authenticated = True
         await self.emit(self.EVENT_CONNECTED)
         await self.emit(self.EVENT_AUTHENTICATED, self._host)
+        self.ready.set()
         return self._host
 
     # --- Compose helpers ---
@@ -141,12 +166,51 @@ class MockHub:
     ) -> dict[str, Any]:
         return {self.SERVICE: "SetZoneProperties", self.ZID: zid, **kwargs}
 
+    def compose_report_system_properties(self) -> dict[str, Any]:
+        return {self.SERVICE: "ReportSystemProperties"}
+
+    def compose_trigger_ramp_all(self, power_level: int) -> dict[str, Any]:
+        return {
+            self.SERVICE: "TriggerRampAllCommand",
+            self.POWER_LEVEL: power_level,
+        }
+
+    async def _ramp_all(self, level: int) -> None:
+        """Do what the LC7001 firmware does in HandleTargetValueAll().
+
+        Update every zone, then broadcast one ZonePropertiesChanged per zone.
+        """
+        for zone in self._zones:
+            properties = zone["properties"]
+            if properties[self.DEVICE_TYPE] == self.SWITCH:
+                # A switch is on when the level is above 49.
+                properties[self.POWER] = level > 49
+            else:
+                properties[self.POWER] = level > 0
+                # A dimmer keeps its stored level unless the level is 100.
+                if level == 100:
+                    properties[self.POWER_LEVEL] = level
+            changed = {self.POWER: properties[self.POWER]}
+            if self.POWER_LEVEL in properties:
+                changed[self.POWER_LEVEL] = properties[self.POWER_LEVEL]
+            await self.emit(
+                f"{self.EVENT_ZONE_PROPERTIES_CHANGED}:{zone['zid']}",
+                {
+                    "ID": 0,
+                    self.SERVICE: "ZonePropertiesChanged",
+                    self.ZID: zone["zid"],
+                    self.PROPERTY_LIST: changed,
+                    "Status": "Success",
+                },
+            )
+
     # --- Simulated request/response ---
 
     async def handle_send(
         self, handler: Any, message: dict[str, Any]
     ) -> None:
         service = message.get(self.SERVICE, "")
+        self.sent.append(message)
 
         if service == "ListZones":
             await handler(
@@ -177,9 +241,19 @@ class MockHub:
                 }
             )
         elif service == "SetZoneProperties":
+            if self._set_zone_response is NO_REPLY:
+                return
             if self._set_zone_response is not None:
                 await handler(self._set_zone_response)
             else:
+                await handler({"Status": "Success"})
+        elif service == "TriggerRampAllCommand":
+            if self._ramp_all_response is NO_REPLY:
+                return
+            if self._ramp_all_response is not None:
+                await handler(self._ramp_all_response)
+            else:
+                await self._ramp_all(message[self.POWER_LEVEL])
                 await handler({"Status": "Success"})
         else:
             await handler({"Status": "Success"})
@@ -246,29 +320,33 @@ def mock_config_entry_with_auth() -> MockConfigEntry:
     )
 
 
+async def async_setup_with_hub(
+    hass: HomeAssistant, entry: MockConfigEntry, hub: MockHub
+) -> None:
+    """Set up a config entry on a MockHub, with its platforms."""
+    entry.add_to_hass(hass)
+
+    with (
+        patch(f"{INIT_PATCH}.Connector") as mock_conn_cls,
+        patch(f"{INIT_PATCH}.Hub", return_value=hub),
+    ):
+        mock_conn_cls.return_value.loop = AsyncMock(return_value=MOCK_MAC)
+        await hass.config_entries.async_setup(entry.entry_id)
+        # The integration starts hub.loop() as a plain asyncio task, which
+        # async_block_till_done() does not track: wait for it explicitly.
+        await asyncio.wait_for(hub.ready.wait(), 5)
+        await hass.async_block_till_done()
+
+
 @pytest.fixture
 async def setup_integration(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
     mock_hub: MockHub,
 ) -> MockHub:
-    """Set up the integration with mocked Connector and Hub.
+    """Set up the integration on a MockHub.
 
     Returns the MockHub instance so tests can emit events on it.
     """
-    mock_config_entry.add_to_hass(hass)
-
-    with (
-        patch(
-            "custom_components.legrand_rflc.Connector",
-        ) as mock_conn_cls,
-        patch(
-            "custom_components.legrand_rflc.Hub",
-            return_value=mock_hub,
-        ),
-    ):
-        mock_conn_cls.return_value.loop = AsyncMock(return_value=MOCK_MAC)
-        await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
-
+    await async_setup_with_hub(hass, mock_config_entry, mock_hub)
     return mock_hub

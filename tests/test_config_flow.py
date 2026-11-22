@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -22,6 +23,15 @@ from custom_components.legrand_rflc.hub import Authenticator
 from .conftest import MOCK_HOST, MOCK_KEY_HEX, MOCK_MAC
 
 PATCH = "custom_components.legrand_rflc.config_flow"
+
+
+@pytest.fixture(autouse=True)
+def mock_setup_entry() -> Generator[AsyncMock]:
+    """Keep a finished flow from setting up the entry on a real hub."""
+    with patch(
+        "custom_components.legrand_rflc.async_setup_entry", return_value=True
+    ) as mock_setup:
+        yield mock_setup
 
 
 # ---- User step ----

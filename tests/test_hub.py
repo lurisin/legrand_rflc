@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from unittest.mock import AsyncMock, MagicMock
 
@@ -10,6 +11,7 @@ import pytest
 from custom_components.legrand_rflc.hub import (
     REDACTED,
     Authenticator,
+    Hub,
     _redact_frame,
     hash_password,
 )
@@ -75,3 +77,40 @@ def test_redact_received_frame() -> None:
         + REDACTED
         + '"}}'
     )
+
+
+# ---- TriggerRampAllCommand ----
+
+
+@pytest.mark.parametrize("power_level", [0, 100])
+def test_compose_trigger_ramp_all(power_level: int) -> None:
+    """The message carries the service name and the PowerLevel field only."""
+    assert Hub().compose_trigger_ramp_all(power_level) == {
+        "Service": "TriggerRampAllCommand",
+        "PowerLevel": power_level,
+    }
+
+
+async def test_trigger_ramp_all_on_the_wire() -> None:
+    """handle_send adds the ID, frames the JSON and routes the reply."""
+    hub = Hub()
+    hub._writer = MagicMock(drain=AsyncMock())
+    replies: list = []
+
+    async def handle(message) -> None:
+        replies.append(message)
+
+    await hub.handle_send(handle, hub.compose_trigger_ramp_all(0))
+
+    frame = hub._writer.write.call_args[0][0]
+    assert frame.endswith(b"\x00")
+    assert json.loads(frame[:-1]) == {
+        "Service": "TriggerRampAllCommand",
+        "PowerLevel": 0,
+        "ID": 1,
+    }
+
+    reply = {"ID": 1, "Service": "TriggerRampAllCommand", "Status": "Success"}
+    await hub.receive(reply)
+    assert replies == [reply]
+    assert not hub.StatusError(reply)

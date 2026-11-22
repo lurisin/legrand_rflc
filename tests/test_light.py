@@ -27,29 +27,15 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.legrand_rflc.const import DOMAIN, LegrandRFLCData
 from custom_components.legrand_rflc.hub import Composer
 
-from .conftest import MOCK_HOST, MOCK_MAC, MockHub, make_zone
+LIGHT_PATCH = "custom_components.legrand_rflc.light"
 
-INIT_PATCH = "custom_components.legrand_rflc"
+from .conftest import MOCK_HOST, NO_REPLY, MockHub
 
 
 @pytest.fixture
-async def setup_lights(
-    hass: HomeAssistant,
-    mock_config_entry: MockConfigEntry,
-    mock_hub: MockHub,
-) -> MockHub:
+async def setup_lights(setup_integration: MockHub) -> MockHub:
     """Set up the integration and return the mock hub."""
-    mock_config_entry.add_to_hass(hass)
-
-    with (
-        patch(f"{INIT_PATCH}.Connector") as mock_conn_cls,
-        patch(f"{INIT_PATCH}.Hub", return_value=mock_hub),
-    ):
-        mock_conn_cls.return_value.loop = AsyncMock(return_value=MOCK_MAC)
-        await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
-
-    return mock_hub
+    return setup_integration
 
 
 # ---- Entity creation ----
@@ -172,13 +158,59 @@ async def test_command_error_raises_ha_error(
         "ErrorText": "Zone busy",
     }
 
-    with pytest.raises(HomeAssistantError, match="hub error"):
+    with pytest.raises(HomeAssistantError, match="Zone busy"):
         await hass.services.async_call(
             "light",
             SERVICE_TURN_ON,
             {ATTR_ENTITY_ID: "light.kitchen"},
             blocking=True,
         )
+
+
+async def test_switch_command_timeout(
+    hass: HomeAssistant, setup_lights: MockHub
+) -> None:
+    """Test that a switch command without a hub reply times out."""
+    hub = setup_lights
+    hub._set_zone_response = NO_REPLY
+
+    with (
+        patch(f"{LIGHT_PATCH}.COMMAND_TIMEOUT", 0.01),
+        pytest.raises(HomeAssistantError, match="in time") as exc_info,
+    ):
+        await hass.services.async_call(
+            "light",
+            SERVICE_TURN_OFF,
+            {ATTR_ENTITY_ID: "light.kitchen"},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "command_timeout"
+    assert exc_info.value.translation_placeholders == {"entity": "light.kitchen"}
+
+
+async def test_dimmer_command_timeout(
+    hass: HomeAssistant, setup_lights: MockHub
+) -> None:
+    """Test that a dimmer command without a hub reply times out."""
+    hub = setup_lights
+    hub._set_zone_response = NO_REPLY
+
+    with (
+        patch(f"{LIGHT_PATCH}.COMMAND_TIMEOUT", 0.01),
+        pytest.raises(HomeAssistantError, match="in time") as exc_info,
+    ):
+        await hass.services.async_call(
+            "light",
+            SERVICE_TURN_ON,
+            {ATTR_ENTITY_ID: "light.living_room", ATTR_BRIGHTNESS: 128},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "command_timeout"
+    assert exc_info.value.translation_placeholders == {
+        "entity": "light.living_room"
+    }
 
 
 # ---- Availability ----

@@ -27,6 +27,7 @@ Once installed, every light zone configured on your LC7001 appears as a Home Ass
 - **Dimmers** — on/off, brightness slider, and transition/fade support
 - **Real-time updates** — when someone uses a physical switch, Home Assistant updates instantly
 - **Diagnostic sensors** — zone count, time zone, DST status, location, and add-a-light mode on the hub device
+- **All On / All Off actions** — switch the whole house at the same instant (see [All On / All Off](#all-on--all-off))
 
 ---
 
@@ -84,6 +85,8 @@ Use this if you don't have HACS or prefer to manage files yourself.
            ├── icons.json
            ├── light.py
            ├── sensor.py
+           ├── services.py
+           ├── services.yaml
            ├── manifest.json
            ├── strings.json
            ├── quality_scale.yaml
@@ -134,6 +137,36 @@ Go to **Settings** → **Devices & Services** → **Legrand RF Lighting Control*
 - **1 device per light zone** — each with a light entity you can control
 
 All your lights are now available in dashboards, automations, and scripts.
+
+---
+
+## All On / All Off
+
+The integration adds two actions (services) that switch the whole house at once:
+
+| Action | What it does |
+|--------|--------------|
+| `legrand_rflc.all_on` | Turns on every Legrand zone of the house at the same time. |
+| `legrand_rflc.all_off` | Turns off every Legrand zone of the house at the same time. |
+
+Neither action takes any field: no target, no brightness, no transition.
+
+```yaml
+# Example: a script step or an automation action
+- action: legrand_rflc.all_off
+```
+
+### Why not just turn off a group of lights?
+
+When Home Assistant turns lights on or off one by one (a group, an area, a script, or a scene stored on the hub), the LC7001 sends one radio packet per zone, about 0.6 seconds each. With 20 lights, the last one reacts many seconds after the first. These two actions use the same command as the "All On / All Off" button of the Legrand app: the hub sends a **single** radio packet that every device of the house obeys at the same instant.
+
+### Limits
+
+- **They act on every Legrand zone of the house.** There is no way to pick a subset: for a subset, use the normal `light.turn_on` / `light.turn_off` actions.
+- **There is no per-zone confirmation.** A device that misses the radio packet stays as it was, while the hub (and so Home Assistant) shows it as on or off. Using the device, or switching it from Home Assistant, brings the two back in sync.
+- **All On sets dimmers to 100%.** All Off does not change the brightness level the hub stores for a dimmer.
+
+If you have more than one LC7001, the command goes to every hub that is connected and authenticated. The action fails with an error if no hub is available, if a hub rejects the command, or if a hub does not answer within 5 seconds.
 
 ---
 

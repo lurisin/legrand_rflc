@@ -13,14 +13,25 @@ from typing import Final
 from homeassistant.const import CONF_AUTHENTICATION, CONF_HOST, CONF_MAC, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, LegrandRFLCConfigEntry, LegrandRFLCData
 from .hub import Authenticator, Connector, Hub
+from .services import async_setup_services
 
 _LOGGER: Final = logging.getLogger(__name__)
 
 PLATFORMS: Final[list[str]] = ["light", "sensor"]
+
+CONFIG_SCHEMA: Final = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the integration: register its services."""
+    async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(
