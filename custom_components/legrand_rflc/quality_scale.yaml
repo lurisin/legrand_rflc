@@ -122,7 +122,7 @@ rules:
     comment: HomeAssistantError uses translation_domain and translation_key.
   icon-translations:
     status: done
-    comment: Icons defined in icons.json via translation_key.
+    comment: Service icons are in icons.json. Lights use the light domain default icons (bulb on, crossed-out bulb off).
   reconfiguration-flow:
     status: done
   repair-issues:
