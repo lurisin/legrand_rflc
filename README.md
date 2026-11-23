@@ -1,12 +1,19 @@
 # Legrand RF Lighting Control
 
 <!-- ha-marketplace:exclude-start -->
-[![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=MichaelB2018&repository=legrand_rflc&category=integration)
+[![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=lurisin&repository=legrand_rflc&category=integration)
 <!-- ha-marketplace:exclude-end -->
 
 A [Home Assistant](https://www.home-assistant.io/) custom integration for the **Legrand LC7001 Whole House Lighting Controller**.
 
 Control your Legrand RF light switches and dimmers directly from Home Assistant — entirely over your **local network**, with **no cloud dependency**.
+
+> **This is a fork** of [MichaelB2018/legrand_rflc](https://github.com/MichaelB2018/legrand_rflc). It adds:
+>
+> - the [All On / All Off](#all-on--all-off) actions, which switch every zone of the house at the same instant;
+> - the standard light icons: a bulb when on, a crossed-out bulb when off.
+>
+> Report problems with this version in [this repository's issues](https://github.com/lurisin/legrand_rflc/issues).
 
 ---
 
@@ -38,7 +45,9 @@ Once installed, every light zone configured on your LC7001 appears as a Home Ass
 
 Click the button below to open this repository in the Marketplace of your Home Assistant instance, then click **Install** and restart Home Assistant.
 
-[![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=MichaelB2018&repository=legrand_rflc&category=integration)
+> **Note:** the Marketplace catalog lists the original repository, not this fork. If the Marketplace does not offer this repository, use [Option 3](#option-3-manual-installation).
+
+[![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=lurisin&repository=legrand_rflc&category=integration)
 
 ### Option 2: HACS (Home Assistant before 2026.11)
 
@@ -47,7 +56,7 @@ Click the button below to open this repository in the Marketplace of your Home A
 1. Make sure HACS is installed. If not, follow the [HACS installation guide](https://hacs.xyz/docs/use/).
 2. In Home Assistant, go to **HACS** → **Integrations**.
 3. Click the **⋮** menu (top right) → **Custom repositories**.
-4. Paste this URL: `https://github.com/MichaelB2018/legrand_rflc`
+4. Paste this URL: `https://github.com/lurisin/legrand_rflc`
 5. Set the category to **Integration** and click **Add**.
 6. Search for **Legrand RF Lighting Control** and click **Install**.
 7. **Restart Home Assistant** (Settings → System → Restart).
@@ -58,7 +67,7 @@ After the restart, continue to [Configuration](#configuration) below.
 
 Use this if you don't have HACS or prefer to manage files yourself.
 
-1. **Download** the latest release from [GitHub](https://github.com/MichaelB2018/legrand_rflc/releases), or clone/download the repository.
+1. **Download** the latest release from [GitHub](https://github.com/lurisin/legrand_rflc/releases), or clone/download the repository.
 
 2. **Locate your Home Assistant config directory.** This is the folder that contains your `configuration.yaml` file. Common locations:
    - **Home Assistant OS / Supervised**: `/config/`
@@ -243,6 +252,10 @@ This integration builds on the work of several contributors:
 - **[@rtyle](https://github.com/rtyle)** — Original author of the [Home Assistant component](https://github.com/rtyle/home-assistant.core/tree/legrand_rflc) and the [`lc7001`](https://github.com/rtyle/lc7001) Python library (vendored as `hub.py`, MIT license)
 - **[@akhudek](https://github.com/akhudek)** — Original HACS packaging and device registry support
 - **[@MichaelB2018](https://github.com/MichaelB2018)** — Platinum quality upgrade, sensor platform, ongoing maintenance
+
+This fork:
+
+- **[@lurisin](https://github.com/lurisin)** — All On / All Off actions, command timeout, standard light icons
 
 ## License
 
